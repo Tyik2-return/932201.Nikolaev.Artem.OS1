@@ -15,7 +15,7 @@ void* provider(void* arg) {
   cout << "provided" << endl;
   pthread_cond_signal(&cond1); 
   pthread_mutex_unlock(&lock);
-  return nullptr;
+  return 0;
 }
 
 void* consumer(void* arg) {
@@ -27,7 +27,7 @@ void* consumer(void* arg) {
   ready = 0;
   cout << "consumed" << endl;
   pthread_mutex_unlock(&lock);
-  return nullptr;
+  return 0;
 }
 
 int main() {
