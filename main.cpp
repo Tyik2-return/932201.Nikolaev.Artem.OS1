@@ -8,6 +8,9 @@ int ready = 0;
 
 void* provider(void* arg) {
   pthread_mutex_lock(&lock);
+  while(ready == 1) { 
+    pthread_cond_wait(&cond1, &lock);
+  }
   ready = 1; 
   cout << "provided" << endl;
   pthread_cond_signal(&cond1); 
