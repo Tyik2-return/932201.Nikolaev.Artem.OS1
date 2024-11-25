@@ -3,32 +3,31 @@
 using namespace std;
 
 pthread_cond_t cond1 = PTHREAD_COND_INITIALIZER;
+pthread_cond_t cond2 = PTHREAD_COND_INITIALIZER;
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-int ready1 = 0;  
-int ready2 = 0;  
+int ready = 0;
 
 void* provider(void* arg) {
   pthread_mutex_lock(&lock);
-  while(ready2 == 1) {  
-      pthread_cond_wait(&cond1, &lock);
+  while(ready == 1) { 
+    pthread_cond_wait(&cond1, &lock);
   }
-  ready1 = 1;
-  ready2 = 0;  
+  ready = 1; 
   cout << "provided" << endl;
-  pthread_cond_signal(&cond1);
+  pthread_cond_signal(&cond2); 
   pthread_mutex_unlock(&lock);
   return 0;
 }
 
 void* consumer(void* arg) {
   pthread_mutex_lock(&lock);
-  while (ready1 == 0) {
-    pthread_cond_wait(&cond1, &lock);
+  while (ready == 0) {
+    pthread_cond_wait(&cond2, &lock);
     cout << "awoke" << endl;
   }
-  ready1 = 0;
-  ready2 = 1;  
+  ready = 0;
   cout << "consumed" << endl;
+  pthread_cond_signal(&cond1);
   pthread_mutex_unlock(&lock);
   return 0;
 }
@@ -39,7 +38,8 @@ int main() {
   pthread_create(&thread_consumer, nullptr, consumer, nullptr);
   pthread_join(thread_provider, nullptr);
   pthread_join(thread_consumer, nullptr);
+  pthread_cond_destroy(&cond2);
   pthread_cond_destroy(&cond1);
-  pthread_mutex_destroy(&lock);  
+  pthread_mutex_destroy(&lock);
   return 0;
 }
