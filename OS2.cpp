@@ -33,7 +33,7 @@ void run_server() {
         exit(1);
     }
 
-
+    sigset_t  origMask;
     struct sockaddr_in address;
     memset(&address, 0, sizeof(address));
     address.sin_family = AF_INET;
