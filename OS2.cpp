@@ -33,13 +33,6 @@ void run_server() {
         exit(1);
     }
 
-    sigset_t blockedMask, origMask;
-    sigemptyset(&blockedMask);
-    sigaddset(&blockedMask, SIGHUP);
-    if (sigprocmask(SIG_BLOCK, &blockedMask, &origMask) == -1) {
-        perror("sigprocmask failed");
-        exit(1);
-    }
 
     struct sockaddr_in address;
     memset(&address, 0, sizeof(address));
