@@ -9,7 +9,6 @@
 #include <linux/rtc.h>
 
 #define PROCFS_NAME "tsu"
-
 static struct proc_dir_entry *our_proc_file = NULL;
 
 static ssize_t procfile_read(struct file *file_pointer, char __user *buffer,
@@ -20,42 +19,64 @@ static ssize_t procfile_read(struct file *file_pointer, char __user *buffer,
     struct tm tm_now;
     struct rtc_time rtc_new_year;
     time64_t seconds_to_new_year;
+    time64_t seconds_in_year;
+    long long percentage;
+    long long percentage_with_tenth; 
 
-    // Получаем текущее время
     ktime_get_real_ts64(&now);
     time64_to_tm(now.tv_sec, 0, &tm_now);
 
-
     memset(&rtc_new_year, 0, sizeof(struct rtc_time));
     rtc_new_year.tm_year = tm_now.tm_year + 1;
-    rtc_new_year.tm_mon = 0; 
-    rtc_new_year.tm_mday = 1;  
-   
+    rtc_new_year.tm_mon = 0;
+    rtc_new_year.tm_mday = 1;
+
     time64_t new_year_seconds = rtc_tm_to_time64(&rtc_new_year);
-
-
     seconds_to_new_year = new_year_seconds - now.tv_sec;
 
-    // Если Новый год уже наступил, считаем до следующего нового года
     if (seconds_to_new_year < 0) {
         rtc_new_year.tm_year++;
         new_year_seconds = rtc_tm_to_time64(&rtc_new_year);
         seconds_to_new_year = new_year_seconds - now.tv_sec;
     }
 
-    long days = seconds_to_new_year / (60 * 60 * 24);
+    struct rtc_time rtc_start_year;
+    memset(&rtc_start_year, 0, sizeof(struct rtc_time));
+    rtc_start_year.tm_year = tm_now.tm_year;
+    rtc_start_year.tm_mon = 0;
+    rtc_start_year.tm_mday = 1;
+
+    time64_t start_year_seconds = rtc_tm_to_time64(&rtc_start_year);
+
+    struct rtc_time rtc_next_start_year;
+    memset(&rtc_next_start_year, 0, sizeof(struct rtc_time));
+    rtc_next_start_year.tm_year = tm_now.tm_year + 1;
+    rtc_next_start_year.tm_mon = 0;
+    rtc_next_start_year.tm_mday = 1;
+
+    time64_t next_start_year_seconds = rtc_tm_to_time64(&rtc_next_start_year);
+    seconds_in_year = next_start_year_seconds - start_year_seconds;
+
+    percentage = (long long)(now.tv_sec - start_year_seconds) * 100 / seconds_in_year;
+    percentage_with_tenth = (long long)(now.tv_sec - start_year_seconds) * 1000 / seconds_in_year;
+
+
+    long days = seconds_to_new_year / (60 * 60 * 24) - 1;
     long hours = (seconds_to_new_year % (60 * 60 * 24)) / (60 * 60);
     long minutes = (seconds_to_new_year % (60 * 60)) / 60;
     long seconds = seconds_to_new_year % 60;
 
-    len = snprintf(s, sizeof(s), "Happy New Year!!!\nTime until New Year: %ld days, %ld hours, %ld minutes, %ld seconds\n",
-                   days, hours, minutes, seconds);
+    len = snprintf(s, sizeof(s),
+                   "Happy New Year!!!\nTime until New Year: %ld days, %ld hours, %ld "
+                   "minutes, %ld seconds\nPercentage of year passed: %lld.%lld%%\n",
+                   days, hours, minutes, seconds, percentage, percentage_with_tenth % 10);
+
 
     if (*offset >= len)
         return 0;
 
     if (buffer_length == 0)
-      return -EINVAL;
+        return -EINVAL;
 
     if (buffer_length < len)
         return -EINVAL;
@@ -86,12 +107,10 @@ static int __init procfs1_init(void) {
         pr_err("Error: Could not initialize /proc/%s\n", PROCFS_NAME);
         return -ENOMEM;
     }
-
     pr_info("/proc/%s created\n", PROCFS_NAME);
     return 0;
 }
 
-// Функция очистки модуля
 static void __exit procfs1_exit(void) {
     proc_remove(our_proc_file);
     pr_info("/proc/%s removed\n", PROCFS_NAME);
